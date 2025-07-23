@@ -1,48 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>USD to EUR Converter Debug</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-  input, button { width: 100%; padding: 10px; margin-top: 10px; }
-  .rate, .result { margin-top: 10px; font-weight: bold; }
-  canvas { margin-top: 20px; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Simple USD to EUR Exchange Rate</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      text-align: center;
+      background: #f7f7f7;
+    }
+    #rate {
+      font-size: 2em;
+      margin-top: 20px;
+      color: #007bff;
+    }
+    #error {
+      color: red;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background: #007bff;
+      color: white;
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
 
-<h2>USD to EUR Converter</h2>
-
-<div class="rate" id="exchangeRate">Loading exchange rate...</div>
-<input type="number" id="usd" placeholder="Enter USD amount" />
-<button id="convertBtn">Convert</button>
-<div class="result" id="result"></div>
-<canvas id="rateChart" height="100"></canvas>
+<h1>USD to EUR Exchange Rate</h1>
+<div id="rate">Loading...</div>
+<div id="error"></div>
+<button id="refreshBtn">Refresh Rate</button>
 
 <script>
-  const CACHE_CURR_RATE_KEY = "usd_eur_current_rate";
-  const CACHE_CURR_RATE_DATE_KEY = "usd_eur_current_rate_date";
-  let currentRate = null;
+  async function fetchExchangeRate() {
+    const rateDiv = document.getElementById("rate");
+    const errorDiv = document.getElementById("error");
+    rateDiv.textContent = "Loading...";
+    errorDiv.textContent = "";
 
-  function log(msg) {
-    console.log("[DEBUG]", msg);
-  }
-
-  function getCachedCurrentRate() {
-    const rate = localStorage.getItem(CACHE_CURR_RATE_KEY);
-    const rateDate = localStorage.getItem(CACHE_CURR_RATE_DATE_KEY);
-    if (rate && rateDate) {
-      return { rate: parseFloat(rate), date: rateDate };
-    }
-    return null;
-  }
-
-  async function fetchCurrentRate() {
-    log("Fetching current rate from API...");
     try {
       const response = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
-      if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
       const data = await response.json();
-      const rate = data.rat
+      const rate = data.rates.EUR;
+      rateDiv.textContent = `1 USD = ${rate.toFixed(4)} EUR`;
+    } catch (error) {
+      rateDiv.textContent = "";
+      errorDiv.textContent = `Error fetching rate: ${error.message}`;
+      console.error("Fetch error:", error);
+    }
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", fetchExchangeRate);
+
+  // Fetch once on page load
+  fetchExchangeRate();
+</script>
+
+</body>
+</html>
