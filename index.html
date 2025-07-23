@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Currency Converter</title>
+  <title>USD to EUR Converter + 1 Year Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -15,35 +16,10 @@
 
     h1 {
       font-size: 1.8em;
-      margin-bottom: 20px;
     }
 
-    .converter {
-      background: white;
-      padding: 15px;
-      margin: 15px auto;
-      border-radius: 8px;
-      max-width: 400px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    .converter h3 {
-      margin-bottom: 10px;
-    }
-
-    input, button {
-      width: 90%;
-      padding: 10px;
-      font-size: 1em;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    button {
-      background-color: #007bff;
-      color: white;
-      border: none;
+    canvas {
+      max-width: 100%;
     }
 
     #rate {
@@ -60,55 +36,65 @@
 </head>
 <body>
 
-<h1>USD ↔ EUR Converter</h1>
-
-<div id="rate">Loading rate...</div>
+<h1>USD to EUR - 365 Day Exchange Rate</h1>
+<div id="rate">Loading current rate...</div>
 <div id="error"></div>
-
-<div class="converter">
-  <h3>USD ➜ EUR</h3>
-  <input id="usdInput" type="number" placeholder="Enter USD" />
-  <button onclick="convertUSD()">Convert</button>
-  <div id="usdResult"></div>
-</div>
-
-<div class="converter">
-  <h3>EUR ➜ USD</h3>
-  <input id="eurInput" type="number" placeholder="Enter EUR" />
-  <button onclick="convertEUR()">Convert</button>
-  <div id="eurResult"></div>
-</div>
+<canvas id="rateChart" height="100"></canvas>
 
 <script>
-  let currentRate = null;
-
-  async function fetchRate() {
+  async function fetchData() {
     try {
-      const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
+      const end = new Date().toISOString().split("T")[0];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 365);
+      const start = startDate.toISOString().split("T")[0];
+
+      const url = `https://api.frankfurter.app/${start}..${end}?from=USD&to=EUR`;
+      const res = await fetch(url);
       const data = await res.json();
-      currentRate = data.rates.EUR;
-      document.getElementById("rate").textContent =
-        `1 USD = ${currentRate.toFixed(4)} EUR (as of ${data.date})`;
+
+      const labels = Object.keys(data.rates);
+      const rates = labels.map(date => data.rates[date].EUR);
+
+      // Show the most recent exchange rate
+      const latestDate = labels[labels.length - 1];
+      const latestRate = rates[rates.length - 1];
+      document.getElementById("rate").textContent = `Latest: 1 USD = ${latestRate.toFixed(4)} EUR (as of ${latestDate})`;
+
+      drawChart(labels, rates);
     } catch (err) {
-      document.getElementById("error").textContent = "Could not fetch exchange rate.";
+      document.getElementById("error").textContent = "Error fetching historical data.";
+      console.error(err);
     }
   }
 
-  function convertUSD() {
-    const usd = parseFloat(document.getElementById("usdInput").value);
-    if (!currentRate || isNaN(usd)) return;
-    const eur = usd * currentRate;
-    document.getElementById("usdResult").textContent = `${usd.toFixed(2)} USD = ${eur.toFixed(2)} EUR`;
+  function drawChart(labels, data) {
+    new Chart(document.getElementById("rateChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "USD to EUR",
+          data,
+          fill: false,
+          borderColor: "#007bff",
+          tension: 0.1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 10
+            }
+          }
+        }
+      }
+    });
   }
 
-  function convertEUR() {
-    const eur = parseFloat(document.getElementById("eurInput").value);
-    if (!currentRate || isNaN(eur)) return;
-    const usd = eur / currentRate;
-    document.getElementById("eurResult").textContent = `${eur.toFixed(2)} EUR = ${usd.toFixed(2)} USD`;
-  }
-
-  fetchRate();
+  fetchData();
 </script>
 
 </body>
