@@ -1,50 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>USD to EUR - 365 Day Chart</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Currency Converter: USD ↔ EUR</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
       padding: 1em;
-      background: #f4f4f4;
+      background: #f9f9f9;
       color: #333;
       max-width: 600px;
       margin: auto;
     }
-    h1 {
-      font-size: 1.5em;
-      margin-bottom: 0.5em;
+    h1, h2 {
+      text-align: center;
     }
-    canvas {
+    .converter {
+      display: grid;
+      gap: 1em;
+      margin: 2em 0;
+    }
+    input[type="number"] {
       width: 100%;
-      height: auto;
+      padding: 0.5em;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    label {
+      font-weight: bold;
     }
     #rate {
-      margin: 1em 0;
+      text-align: center;
       font-size: 1.2em;
-      color: #007bff;
+      margin: 1em 0;
+      color: #0066cc;
+    }
+    canvas {
+      width: 100% !important;
+      height: auto !important;
     }
     #error {
       color: red;
       font-size: 0.9em;
+      text-align: center;
     }
   </style>
 </head>
 <body>
 
-<h1>USD to EUR - Past 365 Days</h1>
-<div id="rate">Loading latest rate...</div>
+<h1>USD ↔ EUR Currency Converter</h1>
+<div id="rate">Loading current exchange rate...</div>
+
+<div class="converter">
+  <div>
+    <label for="usd">USD → EUR</label>
+    <input type="number" id="usd" placeholder="Enter USD amount" />
+  </div>
+  <div>
+    <label for="eur">EUR → USD</label>
+    <input type="number" id="eur" placeholder="Enter EUR amount" />
+  </div>
+</div>
+
+<h2>USD to EUR – Past 365 Days</h2>
 <canvas id="chart"></canvas>
 <div id="error"></div>
 
 <script>
-  async function fetchRateHistory() {
-    const rateText = document.getElementById('rate');
-    const errorText = document.getElementById('error');
+  let currentRate = null;
+  const rateDiv = document.getElementById('rate');
+  const errorDiv = document.getElementById('error');
+  const usdInput = document.getElementById('usd');
+  const eurInput = document.getElementById('eur');
 
+  async function loadExchangeRate() {
     try {
       const end = new Date().toISOString().split('T')[0];
       const startDate = new Date();
@@ -54,20 +86,18 @@
       const url = `https://api.frankfurter.app/${start}..${end}?from=USD&to=EUR`;
       const response = await fetch(url);
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const data = await response.json();
-
       const dates = Object.keys(data.rates);
       const rates = dates.map(date => data.rates[date].EUR);
 
       const latestDate = dates[dates.length - 1];
-      const latestRate = rates[rates.length - 1];
+      currentRate = rates[rates.length - 1];
 
-      rateText.textContent = `Latest rate: 1 USD = ${latestRate.toFixed(4)} EUR (as of ${latestDate})`;
+      rateDiv.textContent = `Latest rate: 1 USD = ${currentRate.toFixed(4)} EUR (as of ${latestDate})`;
 
+      // Chart
       new Chart(document.getElementById('chart'), {
         type: 'line',
         data: {
@@ -75,35 +105,47 @@
           datasets: [{
             label: 'USD to EUR',
             data: rates,
-            fill: false,
             borderColor: 'blue',
+            fill: false,
             tension: 0.1
           }]
         },
         options: {
           responsive: true,
           plugins: {
-            legend: {
-              display: false
-            }
+            legend: { display: false }
           },
           scales: {
             x: {
-              ticks: {
-                maxTicksLimit: 10
-              }
+              ticks: { maxTicksLimit: 10 }
             }
           }
         }
       });
 
+      setUpConversion();
+
     } catch (err) {
-      console.error('Chart load error:', err);
-      errorText.textContent = 'Unable to load chart. Try refreshing or check the console for details.';
+      console.error(err);
+      errorDiv.textContent = "Unable to load data. Try refreshing the page.";
     }
   }
 
-  fetchRateHistory();
+  function setUpConversion() {
+    if (!currentRate) return;
+
+    usdInput.addEventListener("input", () => {
+      const usd = parseFloat(usdInput.value);
+      eurInput.value = isNaN(usd) ? '' : (usd * currentRate).toFixed(2);
+    });
+
+    eurInput.addEventListener("input", () => {
+      const eur = parseFloat(eurInput.value);
+      usdInput.value = isNaN(eur) ? '' : (eur / currentRate).toFixed(2);
+    });
+  }
+
+  loadExchangeRate();
 </script>
 
 </body>
