@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>USD to EUR Converter with Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .result {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    canvas {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>USD to EUR Converter</h2>
+    <input type="number" id="usd" placeholder="Enter USD amount" />
+    <button onclick="convertCurrency()">Convert</button>
+    <div class="result" id="result"></div>
+    <canvas id="rateChart" height="100"></canvas>
+  </div>
+
+  <script>
+    async function convertCurrency() {
+      const usdAmount = parseFloat(document.getElementById('usd').value);
+      const resultDiv = document.getElementById('result');
+
+      if (isNaN(usdAmount)) {
+        resultDiv.innerText = "Please enter a valid number.";
+        return;
+      }
+
+      try {
+        const res = await fetch("https://api.exchangerate.host/latest?base=USD&symbols=EUR");
+        const data = await res.json();
+        const rate = data.rates.EUR;
+        const eurAmount = usdAmount * rate;
+
+        resultDiv.innerText = `${usdAmount.toFixed(2)} USD = ${eurAmount.toFixed(2)} EUR (Rate: ${rate.toFixed(4)})`;
+      } catch (error) {
+        resultDiv.innerText = "Error fetching exchange rate.";
+        console.error(error);
+      }
+    }
+
+    async function loadChartData() {
+      const endDate = new Date().toISOString().split("T")[0];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 365);
+      const formattedStartDate = startDate.toISOString().split("T")[0];
+
+      const url = `https://api.exchangerate.host/timeseries?start_date=${formattedStartDate}&end_date=${endDate}&base=USD&symbols=EUR`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const labels = Object.keys(data.rates).sort();
+        const rates = labels.map(date => data.rates[date].EUR);
+
+        const ctx = document.getElementById('rateChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'USD to EUR (past 365 days)',
+              data: rates,
+              borderColor: '#007bff',
+              backgroundColor: 'rgba(0, 123, 255, 0.1)',
+              fill: true,
+              tension: 0.2,
+            }]
+          },
+          options: {
+            scales: {
+              x: {
+                display: false // Hide date labels for clarity
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'EUR'
+                }
+              }
+            },
+            responsive: true,
+            plugins: {
+              legend: {
+                display: true
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error("Error loading chart data:", error);
+      }
+    }
+
+    // Load chart on page load
+    loadChartData();
+  </script>
+</body>
+</html>
