@@ -2,31 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Simple USD to EUR Exchange Rate</title>
+  <title>USD to EUR Exchange Rate</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 40px;
+      background: #f4f4f4;
       text-align: center;
-      background: #f7f7f7;
     }
     #rate {
       font-size: 2em;
-      margin-top: 20px;
       color: #007bff;
     }
     #error {
       color: red;
-      margin-top: 20px;
+      margin-top: 10px;
+    }
+    canvas {
+      max-width: 100%;
+      margin-top: 40px;
     }
     button {
       padding: 10px 20px;
       font-size: 1em;
-      cursor: pointer;
       border-radius: 5px;
       border: none;
       background: #007bff;
       color: white;
+      cursor: pointer;
       margin-top: 20px;
     }
   </style>
@@ -34,34 +38,106 @@
 <body>
 
 <h1>USD to EUR Exchange Rate</h1>
-<div id="rate">Loading...</div>
+<div id="rate">Loading current rate...</div>
 <div id="error"></div>
-<button id="refreshBtn">Refresh Rate</button>
+<canvas id="rateChart" width="800" height="400"></canvas>
+<button id="refreshBtn">Refresh</button>
 
 <script>
-  async function fetchExchangeRate() {
-    const rateDiv = document.getElementById("rate");
-    const errorDiv = document.getElementById("error");
-    rateDiv.textContent = "Loading...";
-    errorDiv.textContent = "";
+  const rateDiv = document.getElementById("rate");
+  const errorDiv = document.getElementById("error");
+  const ctx = document.getElementById("rateChart").getContext("2d");
+  let chart; // to store Chart.js instance
 
+  async function fetchCurrentRate() {
     try {
-      const response = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const data = await response.json();
+      const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
       const rate = data.rates.EUR;
-      rateDiv.textContent = `1 USD = ${rate.toFixed(4)} EUR`;
-    } catch (error) {
+      rateDiv.textContent = `1 USD = ${rate.toFixed(4)} EUR (as of ${data.date})`;
+    } catch (err) {
       rateDiv.textContent = "";
-      errorDiv.textContent = `Error fetching rate: ${error.message}`;
-      console.error("Fetch error:", error);
+      errorDiv.textContent = "Error fetching current rate: " + err.message;
+      console.error(err);
     }
   }
 
-  document.getElementById("refreshBtn").addEventListener("click", fetchExchangeRate);
+  async function fetchHistoryAndDrawChart() {
+    try {
+      const today = new Date();
+      const oneYearAgo = new Date();
+      oneYearAgo.setDate(today.getDate() - 365);
+      const startDate = oneYearAgo.toISOString().split("T")[0];
+      const endDate = today.toISOString().split("T")[0];
 
-  // Fetch once on page load
-  fetchExchangeRate();
+      const url = `https://api.frankfurter.app/${startDate}..${endDate}?from=USD&to=EUR`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+
+      const dates = Object.keys(data.rates).sort();
+      const values = dates.map(d => data.rates[d].EUR);
+
+      if (chart) chart.destroy(); // clear existing chart
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'USD to EUR',
+            data: values,
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0,123,255,0.1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 12,
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: "EUR"
+              }
+            }
+          }
+        }
+      });
+    } catch (err) {
+      errorDiv.textContent = "Error fetching history: " + err.message;
+      console.error(err);
+    }
+  }
+
+  async function refreshAll() {
+    errorDiv.textContent = "";
+    rateDiv.textContent = "Loading current rate...";
+    await fetchCurrentRate();
+    await fetchHistoryAndDrawChart();
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+
+  // Initial load
+  refreshAll();
 </script>
 
 </body>
