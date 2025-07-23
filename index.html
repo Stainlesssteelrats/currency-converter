@@ -3,36 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <title>USD ↔ EUR Exchange Rate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 40px;
+      padding: 20px;
+      margin: 0;
       background: #f4f4f4;
       text-align: center;
     }
+    h1 {
+      font-size: 1.8em;
+      margin-bottom: 20px;
+    }
     #rate {
-      font-size: 1.5em;
+      font-size: 1.4em;
       color: #007bff;
       margin-bottom: 20px;
     }
     #error {
       color: red;
-      margin-top: 10px;
+      margin: 10px 0;
     }
-    canvas {
-      max-width: 100%;
-      margin-top: 40px;
+    .converter {
+      margin: 20px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .converter h3 {
+      margin-bottom: 10px;
+      font-size: 1.2em;
     }
     input, button {
+      width: 90%;
+      max-width: 300px;
       padding: 10px;
       font-size: 1em;
-      margin: 10px;
+      margin: 10px 0;
       border-radius: 5px;
       border: 1px solid #ccc;
     }
-    .converter {
+    canvas {
+      max-width: 100%;
+      height: auto;
+      margin-top: 30px;
+    }
+    #refreshBtn {
+      background-color: #007bff;
+      color: white;
+      border: none;
       margin-top: 20px;
+    }
+    @media (min-width: 768px) {
+      input, button {
+        max-width: 200px;
+        font-size: 1em;
+      }
+      .converter {
+        display: inline-block;
+        width: 45%;
+        margin: 10px;
+        vertical-align: top;
+      }
     }
   </style>
 </head>
@@ -56,7 +91,7 @@
   <div id="eurResult"></div>
 </div>
 
-<canvas id="rateChart" width="800" height="400"></canvas>
+<canvas id="rateChart"></canvas>
 <br>
 <button id="refreshBtn">Refresh</button>
 
@@ -119,12 +154,13 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
             tooltip: { mode: 'index', intersect: false }
           },
           scales: {
-            x: { ticks: { maxTicksLimit: 12 } },
+            x: { ticks: { maxTicksLimit: 6 } },
             y: { title: { display: true, text: "EUR" } }
           }
         }
@@ -164,8 +200,6 @@
   }
 
   document.getElementById("refreshBtn").addEventListener("click", refreshAll);
-
-  // Load on page start
   refreshAll();
 </script>
 
