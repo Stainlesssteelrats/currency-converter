@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>USD to EUR Exchange Rate</title>
+  <title>USD ↔ EUR Exchange Rate</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -12,66 +12,65 @@
       text-align: center;
     }
     #rate {
-      font-size: 1.8em;
+      font-size: 1.5em;
       color: #007bff;
+      margin-bottom: 20px;
     }
     #error {
       color: red;
       margin-top: 10px;
     }
-    #converter {
-      margin-top: 20px;
-    }
-    input[type="number"] {
-      padding: 8px;
-      font-size: 1em;
-      width: 150px;
-    }
-    #converted {
-      font-size: 1.4em;
-      margin-top: 10px;
-      color: #28a745;
-    }
     canvas {
       max-width: 100%;
       margin-top: 40px;
     }
-    button {
-      padding: 10px 20px;
+    input, button {
+      padding: 10px;
       font-size: 1em;
+      margin: 10px;
       border-radius: 5px;
-      border: none;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
+      border: 1px solid #ccc;
+    }
+    .converter {
       margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-<h1>USD to EUR Exchange Rate</h1>
+<h1>USD ↔ EUR Exchange Rate</h1>
 <div id="rate">Loading current rate...</div>
 <div id="error"></div>
 
-<div id="converter">
-  <p>Enter USD Amount:</p>
-  <input type="number" id="usdInput" placeholder="e.g. 100" min="0" step="0.01">
-  <div id="converted"></div>
+<div class="converter">
+  <h3>Convert USD to EUR</h3>
+  <input id="usdInput" type="number" placeholder="USD amount" step="0.01">
+  <button onclick="convertUSD()">Convert</button>
+  <div id="usdResult"></div>
 </div>
 
-<canvas id="rateChart" width="200" height="100"></canvas>
+<div class="converter">
+  <h3>Convert EUR to USD</h3>
+  <input id="eurInput" type="number" placeholder="EUR amount" step="0.01">
+  <button onclick="convertEUR()">Convert</button>
+  <div id="eurResult"></div>
+</div>
+
+<canvas id="rateChart" width="800" height="400"></canvas>
+<br>
 <button id="refreshBtn">Refresh</button>
 
 <script>
   const rateDiv = document.getElementById("rate");
   const errorDiv = document.getElementById("error");
-  const usdInput = document.getElementById("usdInput");
-  const convertedDiv = document.getElementById("converted");
   const ctx = document.getElementById("rateChart").getContext("2d");
+  const usdInput = document.getElementById("usdInput");
+  const eurInput = document.getElementById("eurInput");
+  const usdResult = document.getElementById("usdResult");
+  const eurResult = document.getElementById("eurResult");
 
-  let chart;
   let currentRate = null;
+  let chart = null;
 
   async function fetchCurrentRate() {
     try {
@@ -83,7 +82,6 @@
     } catch (err) {
       rateDiv.textContent = "";
       errorDiv.textContent = "Error fetching current rate: " + err.message;
-      console.error(err);
     }
   }
 
@@ -122,56 +120,52 @@
         options: {
           responsive: true,
           plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-            },
+            legend: { display: false },
+            tooltip: { mode: 'index', intersect: false }
           },
           scales: {
-            x: {
-              ticks: {
-                maxTicksLimit: 12,
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: "EUR"
-              }
-            }
+            x: { ticks: { maxTicksLimit: 12 } },
+            y: { title: { display: true, text: "EUR" } }
           }
         }
       });
     } catch (err) {
       errorDiv.textContent = "Error fetching history: " + err.message;
-      console.error(err);
+    }
+  }
+
+  function convertUSD() {
+    if (currentRate && usdInput.value !== "") {
+      const usd = parseFloat(usdInput.value);
+      const eur = usd * currentRate;
+      usdResult.textContent = `${usd.toFixed(2)} USD = ${eur.toFixed(2)} EUR`;
+    } else {
+      usdResult.textContent = "Please enter a valid USD amount.";
+    }
+  }
+
+  function convertEUR() {
+    if (currentRate && eurInput.value !== "") {
+      const eur = parseFloat(eurInput.value);
+      const usd = eur / currentRate;
+      eurResult.textContent = `${eur.toFixed(2)} EUR = ${usd.toFixed(2)} USD`;
+    } else {
+      eurResult.textContent = "Please enter a valid EUR amount.";
     }
   }
 
   async function refreshAll() {
     errorDiv.textContent = "";
     rateDiv.textContent = "Loading current rate...";
-    convertedDiv.textContent = "";
+    usdResult.textContent = "";
+    eurResult.textContent = "";
     await fetchCurrentRate();
     await fetchHistoryAndDrawChart();
   }
 
-  usdInput.addEventListener("input", () => {
-    const usd = parseFloat(usdInput.value);
-    if (!isNaN(usd) && currentRate !== null) {
-      const eur = usd * currentRate;
-      convertedDiv.textContent = `${usd.toFixed(2)} USD ≈ ${eur.toFixed(2)} EUR`;
-    } else {
-      convertedDiv.textContent = "";
-    }
-  });
-
   document.getElementById("refreshBtn").addEventListener("click", refreshAll);
 
-  // Initial load
+  // Load on page start
   refreshAll();
 </script>
 
