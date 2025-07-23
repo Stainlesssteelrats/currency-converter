@@ -2,205 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>USD ↔ EUR Exchange Rate</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Currency Converter</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-      margin: 0;
       background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
       text-align: center;
     }
+
     h1 {
       font-size: 1.8em;
       margin-bottom: 20px;
     }
-    #rate {
-      font-size: 1.4em;
-      color: #007bff;
-      margin-bottom: 20px;
-    }
-    #error {
-      color: red;
-      margin: 10px 0;
-    }
+
     .converter {
-      margin: 20px 0;
-      padding: 15px;
       background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 15px;
+      margin: 15px auto;
+      border-radius: 8px;
+      max-width: 400px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
+
     .converter h3 {
       margin-bottom: 10px;
-      font-size: 1.2em;
     }
+
     input, button {
       width: 90%;
-      max-width: 300px;
       padding: 10px;
       font-size: 1em;
       margin: 10px 0;
-      border-radius: 5px;
       border: 1px solid #ccc;
+      border-radius: 5px;
     }
-    canvas {
-      max-width: 100%;
-      height: auto;
-      margin-top: 30px;
-    }
-    #refreshBtn {
+
+    button {
       background-color: #007bff;
       color: white;
       border: none;
-      margin-top: 20px;
     }
-    @media (min-width: 768px) {
-      input, button {
-        max-width: 200px;
-        font-size: 1em;
-      }
-      .converter {
-        display: inline-block;
-        width: 45%;
-        margin: 10px;
-        vertical-align: top;
-      }
+
+    #rate {
+      margin-top: 10px;
+      font-size: 1.2em;
+      color: #007bff;
+    }
+
+    #error {
+      color: red;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-<h1>USD ↔ EUR Exchange Rate</h1>
-<div id="rate">Loading current rate...</div>
+<h1>USD ↔ EUR Converter</h1>
+
+<div id="rate">Loading rate...</div>
 <div id="error"></div>
 
 <div class="converter">
-  <h3>Convert USD to EUR</h3>
-  <input id="usdInput" type="number" placeholder="USD amount" step="0.01">
+  <h3>USD ➜ EUR</h3>
+  <input id="usdInput" type="number" placeholder="Enter USD" />
   <button onclick="convertUSD()">Convert</button>
   <div id="usdResult"></div>
 </div>
 
 <div class="converter">
-  <h3>Convert EUR to USD</h3>
-  <input id="eurInput" type="number" placeholder="EUR amount" step="0.01">
+  <h3>EUR ➜ USD</h3>
+  <input id="eurInput" type="number" placeholder="Enter EUR" />
   <button onclick="convertEUR()">Convert</button>
   <div id="eurResult"></div>
 </div>
 
-<canvas id="rateChart"></canvas>
-<br>
-<button id="refreshBtn">Refresh</button>
-
 <script>
-  const rateDiv = document.getElementById("rate");
-  const errorDiv = document.getElementById("error");
-  const ctx = document.getElementById("rateChart").getContext("2d");
-  const usdInput = document.getElementById("usdInput");
-  const eurInput = document.getElementById("eurInput");
-  const usdResult = document.getElementById("usdResult");
-  const eurResult = document.getElementById("eurResult");
-
   let currentRate = null;
-  let chart = null;
 
-  async function fetchCurrentRate() {
+  async function fetchRate() {
     try {
       const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       currentRate = data.rates.EUR;
-      rateDiv.textContent = `1 USD = ${currentRate.toFixed(4)} EUR (as of ${data.date})`;
+      document.getElementById("rate").textContent =
+        `1 USD = ${currentRate.toFixed(4)} EUR (as of ${data.date})`;
     } catch (err) {
-      rateDiv.textContent = "";
-      errorDiv.textContent = "Error fetching current rate: " + err.message;
-    }
-  }
-
-  async function fetchHistoryAndDrawChart() {
-    try {
-      const today = new Date();
-      const oneYearAgo = new Date();
-      oneYearAgo.setDate(today.getDate() - 365);
-      const startDate = oneYearAgo.toISOString().split("T")[0];
-      const endDate = today.toISOString().split("T")[0];
-
-      const url = `https://api.frankfurter.app/${startDate}..${endDate}?from=USD&to=EUR`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const data = await res.json();
-
-      const dates = Object.keys(data.rates).sort();
-      const values = dates.map(d => data.rates[d].EUR);
-
-      if (chart) chart.destroy();
-
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: dates,
-          datasets: [{
-            label: 'USD to EUR',
-            data: values,
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0,123,255,0.1)',
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { mode: 'index', intersect: false }
-          },
-          scales: {
-            x: { ticks: { maxTicksLimit: 6 } },
-            y: { title: { display: true, text: "EUR" } }
-          }
-        }
-      });
-    } catch (err) {
-      errorDiv.textContent = "Error fetching history: " + err.message;
+      document.getElementById("error").textContent = "Could not fetch exchange rate.";
     }
   }
 
   function convertUSD() {
-    if (currentRate && usdInput.value !== "") {
-      const usd = parseFloat(usdInput.value);
-      const eur = usd * currentRate;
-      usdResult.textContent = `${usd.toFixed(2)} USD = ${eur.toFixed(2)} EUR`;
-    } else {
-      usdResult.textContent = "Please enter a valid USD amount.";
-    }
+    const usd = parseFloat(document.getElementById("usdInput").value);
+    if (!currentRate || isNaN(usd)) return;
+    const eur = usd * currentRate;
+    document.getElementById("usdResult").textContent = `${usd.toFixed(2)} USD = ${eur.toFixed(2)} EUR`;
   }
 
   function convertEUR() {
-    if (currentRate && eurInput.value !== "") {
-      const eur = parseFloat(eurInput.value);
-      const usd = eur / currentRate;
-      eurResult.textContent = `${eur.toFixed(2)} EUR = ${usd.toFixed(2)} USD`;
-    } else {
-      eurResult.textContent = "Please enter a valid EUR amount.";
-    }
+    const eur = parseFloat(document.getElementById("eurInput").value);
+    if (!currentRate || isNaN(eur)) return;
+    const usd = eur / currentRate;
+    document.getElementById("eurResult").textContent = `${eur.toFixed(2)} EUR = ${usd.toFixed(2)} USD`;
   }
 
-  async function refreshAll() {
-    errorDiv.textContent = "";
-    rateDiv.textContent = "Loading current rate...";
-    usdResult.textContent = "";
-    eurResult.textContent = "";
-    await fetchCurrentRate();
-    await fetchHistoryAndDrawChart();
-  }
-
-  document.getElementById("refreshBtn").addEventListener("click", refreshAll);
-  refreshAll();
+  fetchRate();
 </script>
 
 </body>
