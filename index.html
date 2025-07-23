@@ -1,100 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>USD to EUR Converter + 1 Year Chart</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>USD to EUR - 365 Day Chart</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: sans-serif;
+      padding: 1em;
       background: #f4f4f4;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
+      color: #333;
+      max-width: 600px;
+      margin: auto;
     }
-
     h1 {
-      font-size: 1.8em;
+      font-size: 1.5em;
+      margin-bottom: 0.5em;
     }
-
     canvas {
-      max-width: 100%;
+      width: 100%;
+      height: auto;
     }
-
     #rate {
-      margin-top: 10px;
+      margin: 1em 0;
       font-size: 1.2em;
       color: #007bff;
     }
-
     #error {
       color: red;
-      margin-top: 10px;
+      font-size: 0.9em;
     }
   </style>
 </head>
 <body>
 
-<h1>USD to EUR - 365 Day Exchange Rate</h1>
-<div id="rate">Loading current rate...</div>
+<h1>USD to EUR - Past 365 Days</h1>
+<div id="rate">Loading latest rate...</div>
+<canvas id="chart"></canvas>
 <div id="error"></div>
-<canvas id="rateChart" height="100"></canvas>
 
 <script>
-  async function fetchData() {
+  async function fetchRateHistory() {
+    const rateText = document.getElementById('rate');
+    const errorText = document.getElementById('error');
+
     try {
-      const end = new Date().toISOString().split("T")[0];
+      const end = new Date().toISOString().split('T')[0];
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 365);
-      const start = startDate.toISOString().split("T")[0];
+      const start = startDate.toISOString().split('T')[0];
 
       const url = `https://api.frankfurter.app/${start}..${end}?from=USD&to=EUR`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const response = await fetch(url);
 
-      const labels = Object.keys(data.rates);
-      const rates = labels.map(date => data.rates[date].EUR);
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
 
-      // Show the most recent exchange rate
-      const latestDate = labels[labels.length - 1];
+      const data = await response.json();
+
+      const dates = Object.keys(data.rates);
+      const rates = dates.map(date => data.rates[date].EUR);
+
+      const latestDate = dates[dates.length - 1];
       const latestRate = rates[rates.length - 1];
-      document.getElementById("rate").textContent = `Latest: 1 USD = ${latestRate.toFixed(4)} EUR (as of ${latestDate})`;
 
-      drawChart(labels, rates);
-    } catch (err) {
-      document.getElementById("error").textContent = "Error fetching historical data.";
-      console.error(err);
-    }
-  }
+      rateText.textContent = `Latest rate: 1 USD = ${latestRate.toFixed(4)} EUR (as of ${latestDate})`;
 
-  function drawChart(labels, data) {
-    new Chart(document.getElementById("rateChart"), {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: "USD to EUR",
-          data,
-          fill: false,
-          borderColor: "#007bff",
-          tension: 0.1
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            ticks: {
-              maxTicksLimit: 10
+      new Chart(document.getElementById('chart'), {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'USD to EUR',
+            data: rates,
+            fill: false,
+            borderColor: 'blue',
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 10
+              }
             }
           }
         }
-      }
-    });
+      });
+
+    } catch (err) {
+      console.error('Chart load error:', err);
+      errorText.textContent = 'Unable to load chart. Try refreshing or check the console for details.';
+    }
   }
 
-  fetchData();
+  fetchRateHistory();
 </script>
 
 </body>
