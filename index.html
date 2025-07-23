@@ -12,12 +12,25 @@
       text-align: center;
     }
     #rate {
-      font-size: 2em;
+      font-size: 1.8em;
       color: #007bff;
     }
     #error {
       color: red;
       margin-top: 10px;
+    }
+    #converter {
+      margin-top: 20px;
+    }
+    input[type="number"] {
+      padding: 8px;
+      font-size: 1em;
+      width: 150px;
+    }
+    #converted {
+      font-size: 1.4em;
+      margin-top: 10px;
+      color: #28a745;
     }
     canvas {
       max-width: 100%;
@@ -40,22 +53,33 @@
 <h1>USD to EUR Exchange Rate</h1>
 <div id="rate">Loading current rate...</div>
 <div id="error"></div>
+
+<div id="converter">
+  <p>Enter USD Amount:</p>
+  <input type="number" id="usdInput" placeholder="e.g. 100" min="0" step="0.01">
+  <div id="converted"></div>
+</div>
+
 <canvas id="rateChart" width="800" height="400"></canvas>
 <button id="refreshBtn">Refresh</button>
 
 <script>
   const rateDiv = document.getElementById("rate");
   const errorDiv = document.getElementById("error");
+  const usdInput = document.getElementById("usdInput");
+  const convertedDiv = document.getElementById("converted");
   const ctx = document.getElementById("rateChart").getContext("2d");
-  let chart; // to store Chart.js instance
+
+  let chart;
+  let currentRate = null;
 
   async function fetchCurrentRate() {
     try {
       const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
-      const rate = data.rates.EUR;
-      rateDiv.textContent = `1 USD = ${rate.toFixed(4)} EUR (as of ${data.date})`;
+      currentRate = data.rates.EUR;
+      rateDiv.textContent = `1 USD = ${currentRate.toFixed(4)} EUR (as of ${data.date})`;
     } catch (err) {
       rateDiv.textContent = "";
       errorDiv.textContent = "Error fetching current rate: " + err.message;
@@ -79,7 +103,7 @@
       const dates = Object.keys(data.rates).sort();
       const values = dates.map(d => data.rates[d].EUR);
 
-      if (chart) chart.destroy(); // clear existing chart
+      if (chart) chart.destroy();
 
       chart = new Chart(ctx, {
         type: 'line',
@@ -130,9 +154,20 @@
   async function refreshAll() {
     errorDiv.textContent = "";
     rateDiv.textContent = "Loading current rate...";
+    convertedDiv.textContent = "";
     await fetchCurrentRate();
     await fetchHistoryAndDrawChart();
   }
+
+  usdInput.addEventListener("input", () => {
+    const usd = parseFloat(usdInput.value);
+    if (!isNaN(usd) && currentRate !== null) {
+      const eur = usd * currentRate;
+      convertedDiv.textContent = `${usd.toFixed(2)} USD ≈ ${eur.toFixed(2)} EUR`;
+    } else {
+      convertedDiv.textContent = "";
+    }
+  });
 
   document.getElementById("refreshBtn").addEventListener("click", refreshAll);
 
